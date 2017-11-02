@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2014-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package mongoreplay
 
 import (
@@ -244,6 +250,11 @@ func (context *ExecutionContext) Execute(op *RecordedOp, socket *mgo.MongoSocket
 			if !ok2 {
 				return opToExec, nil, nil
 			}
+		}
+		// check if the op has a function to preprocess its data given the current
+		// set of options
+		if op, ok := opToExec.(Preprocessable); ok {
+			op.Preprocess()
 		}
 
 		op.PlayedAt = &PreciseTime{time.Now()}

@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2014-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package mongoreplay
 
 import (
@@ -710,4 +716,55 @@ func TestLegacyOpReplyGetCursorID(t *testing.T) {
 	if cursorID != testCursorID {
 		t.Errorf("cursorID did not match expected. Found: %v --- Expected: %v", cursorID, testCursorID)
 	}
+}
+
+func TestFilterCommandOpMetadata(t *testing.T) {
+	testMetadata := &bson.D{{"test", 1}}
+
+	testCases := []struct {
+		name                   string
+		filter                 bool
+		inputMetadata          *bson.D
+		expectedResultMetadata *bson.D
+	}{
+		{
+			name:                   "metadata not filtered",
+			filter:                 false,
+			inputMetadata:          testMetadata,
+			expectedResultMetadata: testMetadata,
+		},
+		{
+			name:                   "metadata filtered",
+			filter:                 true,
+			inputMetadata:          testMetadata,
+			expectedResultMetadata: nil,
+		},
+	}
+
+	for _, c := range testCases {
+		t.Logf("running case: %s", c.name)
+
+		commandOp := &CommandOp{
+			CommandOp: mgo.CommandOp{
+				Metadata: testMetadata,
+			},
+		}
+
+		// This check ensures that the type implements the preprocessable interface
+		asInterface := interface{}(commandOp)
+		asPreprocessable, ok := asInterface.(Preprocessable)
+		if !ok {
+			t.Errorf("command does not implement preprocessable")
+		}
+		if c.filter {
+			asPreprocessable.Preprocess()
+		}
+		if commandOp.Metadata == nil && c.expectedResultMetadata == nil {
+			continue
+		}
+		if !reflect.DeepEqual(commandOp.Metadata, c.expectedResultMetadata) {
+			t.Errorf("expected metadata to be: %v but it was %v", c.expectedResultMetadata, commandOp.Metadata)
+		}
+	}
+
 }
